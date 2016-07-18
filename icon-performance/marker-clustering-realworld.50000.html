@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Leaflet debug page</title>
+
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.0.0-beta.2/leaflet.css" />
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.0.0-beta.2/leaflet.js"></script>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="screen.css" />
+
+	<link rel="stylesheet" href="MarkerCluster-v1.0.0-rc.1.css" />
+	<link rel="stylesheet" href="MarkerCluster.Default-v1.0.0-rc.1.css" />
+	<script src="leaflet.markercluster-src-v1.0.0-rc.1.js"></script>
+
+	<script src="realworld.50000.1.js"></script>
+	<script src="realworld.50000.2.js"></script>
+
+</head>
+<body>
+
+    <div id="progress"><div id="progress-bar"></div></div>
+	<div id="map"></div>
+	<span>Mouse over a cluster to see the bounds of its children and click a cluster to zoom to those bounds</span>
+	<div>
+		<button id="add">Add 25k</button>
+		<button id="remove">Remove 25k</button>
+	</div>
+	<script type="text/javascript">
+		var tiles = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+				maxZoom: 18,
+				attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors, Points &copy 2012 LINZ'
+			}),
+			latlng = L.latLng(-37.79, 175.27);
+
+		var map = L.map('map', { center: latlng, zoom: 9, layers: [tiles] });
+
+		var progress = document.getElementById('progress');
+		var progressBar = document.getElementById('progress-bar');
+		var benchmark = false;
+
+		function updateProgressBar(processed, total, elapsed, layersArray) {
+			if (elapsed > 1000) {
+				// if it takes more than a second to load, display the progress bar:
+				progress.style.display = 'block';
+				progressBar.style.width = Math.round(processed/total*100) + '%';
+			}
+
+			if (processed === total) {
+				// all markers processed - hide the progress bar:
+				progress.style.display = 'none';
+				if (benchmark) {
+					console.log('finished adding: ' + elapsed);
+				}
+			}
+		}
+
+		var markers = L.markerClusterGroup({
+			chunkedLoading: true,
+			chunkProgress: updateProgressBar,
+			iconCreateFunction: function(cluster) {
+				var markers = cluster.getAllChildMarkers();
+				var childCount = markers.length;
+
+				var c = ' marker-cluster-';
+				if (childCount < 10) {
+					c += 'small';
+				} else if (childCount < 100) {
+					c += 'medium';
+				} else {
+					c += 'large';
+				}
+
+				return new L.DivIcon({ html: '<div><span>' + childCount + '</span></div>', className: 'marker-cluster' + c, iconSize: new L.Point(40, 40) });
+			}
+		});
+
+		var markerList1 = [];
+		var markerList2 = [];
+
+		//console.log('start creating markers: ' + window.performance.now());
+
+		for (var i = 0; i < addressPoints.length; i++) {
+			var a = addressPoints[i];
+			var title = a[2];
+			var marker = L.marker(L.latLng(a[0], a[1]), { title: title });
+			marker.bindPopup(title);
+			markerList1.push(marker);
+		}
+		for (var i = 0; i < addressPoints2.length; i++) {
+			var a = addressPoints[i];
+			var title = a[2];
+			var marker = L.marker(L.latLng(a[0], a[1]), { title: title });
+			marker.bindPopup(title);
+			markerList2.push(marker);
+		}
+
+		//console.log('start clustering 1: ' + window.performance.now());
+
+		markers.addLayers(markerList1);
+		map.addLayer(markers);
+
+		//console.log('end clustering 1: ' + window.performance.now());
+
+		var add = document.getElementById('add');
+		var remove = document.getElementById('remove');
+
+		add.onclick = function() {
+			benchmark = true;
+			markers.addLayers(markerList2);
+		};
+
+		remove.onclick = function() {
+			var started = window.performance.now();
+			markers.removeLayers(markerList2);
+			console.log('finished removing: ' + (window.performance.now() - started));
+		};
+	</script>
+</body>
+</html>

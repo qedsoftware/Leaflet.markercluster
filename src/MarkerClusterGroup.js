@@ -108,6 +108,8 @@ L.MarkerClusterGroup = L.FeatureGroup.extend({
 		// Refresh bounds and weighted positions.
 		this._topClusterLevel._recalculateBounds();
 
+		this._refreshClustersIcons();
+
 		//Work out what is visible
 		var visibleLayer = layer,
 			currentZoom = this._map.getZoom();
@@ -165,6 +167,8 @@ L.MarkerClusterGroup = L.FeatureGroup.extend({
 
 		// Refresh bounds and weighted positions.
 		this._topClusterLevel._recalculateBounds();
+
+		this._refreshClustersIcons();
 
 		if (this._featureGroup.hasLayer(layer)) {
 			this._featureGroup.removeLayer(layer);
@@ -234,12 +238,7 @@ L.MarkerClusterGroup = L.FeatureGroup.extend({
 					// Refresh bounds and weighted positions.
 					this._topClusterLevel._recalculateBounds();
 
-					//Update the icons of all those visible clusters that were affected
-					this._featureGroup.eachLayer(function (c) {
-						if (c instanceof L.MarkerCluster && c._iconNeedsUpdate) {
-							c._updateIcon();
-						}
-					});
+					this._refreshClustersIcons();
 
 					this._topClusterLevel._recursivelyAddChildrenToMap(null, this._zoom, this._currentShownBounds);
 				} else {
@@ -317,14 +316,10 @@ L.MarkerClusterGroup = L.FeatureGroup.extend({
 		// Refresh bounds and weighted positions.
 		this._topClusterLevel._recalculateBounds();
 
+		this._refreshClustersIcons();
+
 		//Fix up the clusters and markers on the map
 		this._topClusterLevel._recursivelyAddChildrenToMap(null, this._zoom, this._currentShownBounds);
-
-		fg.eachLayer(function (c) {
-			if (c instanceof L.MarkerCluster) {
-				c._updateIcon();
-			}
-		});
 
 		return this;
 	},
@@ -640,9 +635,7 @@ L.MarkerClusterGroup = L.FeatureGroup.extend({
 					}
 				}
 			} else {
-				if (!dontUpdateMap || !cluster._icon) {
-					cluster._updateIcon();
-				}
+				cluster._iconNeedsUpdate = true;
 			}
 
 			cluster = cluster.__parent;
@@ -880,6 +873,19 @@ L.MarkerClusterGroup = L.FeatureGroup.extend({
 		this._topClusterLevel._addChild(layer);
 		layer.__parent = this._topClusterLevel;
 		return;
+	},
+
+	/**
+	 * Refreshes the icon of all "dirty" visible clusters.
+	 * Non-visible "dirty" clusters will be updated when they are added to the map.
+	 * @private
+	 */
+	_refreshClustersIcons: function () {
+		this._featureGroup.eachLayer(function (c) {
+			if (c instanceof L.MarkerCluster && c._iconNeedsUpdate) {
+				c._updateIcon();
+			}
+		});
 	},
 
 	//Enqueue code to fire after the marker expand/contract has happened
